@@ -193,4 +193,4 @@ The agent runs automatically at 3 AM UTC (7 AM UAE) and 3 PM UTC (7 PM UAE) ever
 
 ---
 
-Built by [Sahil](https://github.com/sahil1188) · UAE · Backend engineer (NestJS, Python)
+Built by [Sahil](https://github.com/sahil1188)
