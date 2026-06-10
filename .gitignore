@@ -1,0 +1,33 @@
+# Never commit secrets
+.env
+
+# Internal project spec/instructions — not for public repo
+CLAUDE.md
+
+# Auto-generated deduplication state — kept out of git because it changes every run.
+# GitHub Actions persists it between runs via actions/cache (see digest.yml).
+# Locally it persists on disk automatically.
+data/seen_urls.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Pytest
+.pytest_cache/

@@ -1,0 +1,103 @@
+name: AI Digest
+
+on:
+  schedule:
+    # Morning digest — 7 AM UAE = 3 AM UTC
+    - cron: "0 3 * * *"
+    # Evening digest — 7 PM UAE = 3 PM UTC
+    - cron: "0 15 * * *"
+
+  # Manual trigger for testing without waiting for the cron
+  workflow_dispatch:
+    inputs:
+      time:
+        description: "Which digest to run"
+        required: true
+        default: "morning"
+        type: choice
+        options:
+          - morning
+          - evening
+      dry_run:
+        description: "Dry run (generates HTML preview artifact, skips email)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Restore seen_urls.json from the previous run so we never re-send old stories.
+      # Without this, every GitHub Actions run starts from a fresh clone (seen_urls.json
+      # is gitignored), so the same articles would appear in every digest.
+      # cache-hit restores the file before the script runs; we always save after (even
+      # on cache-miss) so the next run gets the updated list.
+      - name: Restore seen-URLs cache
+        uses: actions/cache@v4
+        with:
+          path: data/seen_urls.json
+          # Key changes daily so the cache is replaced (not just restored) each day.
+          # This caps cache size and avoids stale entries piling up forever.
+          key: seen-urls-${{ runner.os }}-${{ github.run_number }}
+          restore-keys: |
+            seen-urls-${{ runner.os }}-
+
+      - name: Determine digest time
+        id: time
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual run — use the dropdown input
+            echo "digest_time=${{ github.event.inputs.time }}" >> "$GITHUB_OUTPUT"
+          else
+            # Scheduled run — derive from current UTC hour
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" = "03" ]; then
+              echo "digest_time=morning" >> "$GITHUB_OUTPUT"
+            else
+              echo "digest_time=evening" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Run digest
+        run: |
+          # Build the --dry-run flag only when requested via manual trigger
+          DRY_RUN=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_RUN="--dry-run"
+          fi
+          python src/main.py --time "${{ steps.time.outputs.digest_time }}" $DRY_RUN
+        env:
+          GEMINI_API_KEY:      ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY:        ${{ secrets.GROQ_API_KEY }}
+          GMAIL_ADDRESS:       ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD:  ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT_EMAIL:     ${{ secrets.RECIPIENT_EMAIL }}
+          REDDIT_CLIENT_ID:    ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USER_AGENT:   ${{ secrets.REDDIT_USER_AGENT }}
+
+      # Upload the preview HTML as a downloadable artifact (only useful in dry-run mode)
+      - name: Upload dry-run preview
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-preview-${{ steps.time.outputs.digest_time }}
+          path: /tmp/digest_preview_*.html
+          retention-days: 1
