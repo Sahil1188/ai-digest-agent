@@ -1,18 +1,17 @@
 """
-Reddit fetcher using PRAW (Python Reddit API Wrapper).
-Fetches top posts from AI/ML subreddits for the past 24 hours.
-PRAW handles Reddit OAuth and rate-limiting automatically — that's why we use it
-instead of raw HTTP requests against the Reddit JSON API.
+Reddit fetcher — pulls top daily posts from AI/ML subreddits via Reddit's
+public RSS feeds (old.reddit.com), the same read-only RSS approach used in
+nitter_fetcher.py for Twitter/X.
+
+Why RSS instead of the official API: as of late 2025, Reddit requires a
+multi-week pre-approval process for ANY API access, including hobby
+projects. Public RSS feeds need no registration and no credentials.
 """
-import os
+import requests
+import feedparser
+from bs4 import BeautifulSoup
 
-import praw
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# Subreddits to monitor — chosen for highest-signal AI/ML discussion.
-# The tuple is (subreddit_name, post_limit) as specified in CLAUDE.md.
+# (subreddit, post_limit) — chosen for highest-signal AI/ML discussion
 SUBREDDITS: list[tuple[str, int]] = [
     ("MachineLearning", 10),
     ("LocalLLaMA", 10),
@@ -21,65 +20,53 @@ SUBREDDITS: list[tuple[str, int]] = [
     ("singularity", 8),
 ]
 
+# Reddit blocks requests without a browser-like User-Agent (returns 429/403)
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ai-digest-agent/1.0; +https://github.com)"}
+
+
+def _clean_summary(html_summary: str) -> str:
+    """
+    Reddit's RSS summary field is an HTML blob (thumbnail table + comment link).
+    Strip the markup down to plain text and trim to 300 chars per CLAUDE.md spec.
+    """
+    text = BeautifulSoup(html_summary, "lxml").get_text(separator=" ", strip=True)
+    return text[:300]
+
 
 def fetch_reddit() -> list[dict]:
     """
-    Fetch top posts from AI subreddits via the Reddit API.
+    Fetch top-of-day posts from AI/ML subreddits via public RSS feeds.
 
     Returns a list of dicts with keys: title, url, summary, source, published.
-    If REDDIT_CLIENT_ID is absent from env, logs a warning and returns [] —
-    Reddit is optional enrichment, not a critical dependency.
+    One subreddit failing (rate limit, network error) never stops the others —
+    we log and move on, returning whatever succeeded.
     """
-    # Guard: check credentials before attempting any network call
-    client_id = os.getenv("REDDIT_CLIENT_ID")
-    if not client_id:
-        print("[Reddit] REDDIT_CLIENT_ID not set — skipping Reddit fetch")
-        return []
-
-    client_secret = os.getenv("REDDIT_CLIENT_SECRET", "")
-    user_agent = os.getenv("REDDIT_USER_AGENT", "python:ai-digest-bot:v1.0")
-
-    try:
-        # read_only=True: we never post, comment, or vote — simplest auth flow
-        reddit = praw.Reddit(
-            client_id=client_id,
-            client_secret=client_secret,
-            user_agent=user_agent,
-            read_only=True,
-        )
-    except Exception as e:
-        print(f"[Reddit] Failed to initialise PRAW client: {e}")
-        return []
-
     all_items: list[dict] = []
 
-    for subreddit_name, limit in SUBREDDITS:
+    for subreddit, limit in SUBREDDITS:
+        url = f"https://old.reddit.com/r/{subreddit}/top/.rss?t=day&limit={limit}"
+
         try:
-            subreddit = reddit.subreddit(subreddit_name)
-            # time_filter="day" gives the past 24 hours — ideal for a daily digest
-            posts = subreddit.top(time_filter="day", limit=limit)
+            response = requests.get(url, headers=HEADERS, timeout=15)
+            response.raise_for_status()
+
+            feed = feedparser.parse(response.content)
 
             count = 0
-            for post in posts:
-                # selftext is the body for text posts; link posts have empty selftext
-                summary = post.selftext[:300]
-                if len(post.selftext) > 300:
-                    summary += "..."
-
+            for entry in feed.entries[:limit]:
                 all_items.append({
-                    "title": post.title,
-                    "url": post.url,
-                    "summary": summary,
-                    "source": f"Reddit r/{subreddit_name}",
-                    "published": "",  # reddit timestamps are unix ints — keep empty for consistency
+                    "title": entry.get("title", "No title"),
+                    "url": entry.get("link", ""),
+                    "summary": _clean_summary(entry.get("summary", "")),
+                    "source": f"Reddit r/{subreddit}",
+                    "published": entry.get("published", ""),
                 })
                 count += 1
 
-            print(f"[Reddit] Fetched {count} posts from r/{subreddit_name}")
+            print(f"[Reddit] Fetched {count} posts from r/{subreddit}")
 
         except Exception as e:
-            # One subreddit failing must never crash the whole run
-            print(f"[Reddit] Error fetching r/{subreddit_name}: {e}")
+            print(f"[Reddit] Error fetching r/{subreddit}: {e}")
             continue
 
     return all_items

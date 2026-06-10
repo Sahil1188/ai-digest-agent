@@ -1,6 +1,6 @@
 """
 Summariser — sends fetched items to an LLM and gets back a structured digest.
-Primary: Gemini 2.5 Flash (free tier, generous daily limit).
+Primary: Gemini 2.0 Flash (free tier, generous daily limit).
 Fallback: Groq Llama 3.3 70B (also free — uses the openai SDK pointed at Groq's URL).
 Direct API calls only — no LangChain, no abstractions, as per project rules.
 """
@@ -13,13 +13,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GEMINI_MODEL = "gemini-2.5-flash"
+# Gemini 2.0 Flash (not 2.5) — 2.5 Flash defaults to "extended thinking", which
+# can silently take minutes per call on the google-generativeai 0.8.x SDK
+# (no thinking_budget knob available). 2.0 Flash answers directly and is just
+# as capable for this structured-extraction task.
+GEMINI_MODEL = "gemini-2.0-flash"
 GROQ_MODEL = "llama-3.3-70b-versatile"
 # Groq exposes an OpenAI-compatible endpoint, so we reuse the openai SDK
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
-# 40 items keeps the prompt under ~6K tokens — fast enough for free tier
-# (80 items caused multi-minute waits with Gemini's extended thinking)
+# 40 items keeps the prompt under ~6K tokens — fast and well within free-tier limits
 MAX_ITEMS_FOR_PROMPT = 40
 
 
@@ -104,9 +107,9 @@ def _strip_fences(raw: str) -> str:
 
 def _call_gemini(prompt: str) -> dict:
     """
-    Call Gemini 2.5 Flash. Raises on failure so the caller can fall back to Groq.
-    thinking_budget=0 disables extended thinking — without this, the model can
-    silently "think" for 2-5 minutes before returning, which looks like a hang.
+    Call Gemini 2.0 Flash. Raises on failure so the caller can fall back to Groq.
+    response_mime_type="application/json" nudges the model to return raw JSON
+    (still passed through _strip_fences as a safety net for any stray fences).
     """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -115,11 +118,10 @@ def _call_gemini(prompt: str) -> dict:
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel(GEMINI_MODEL)
 
-    # Disable thinking to get a fast response (seconds not minutes)
     response = model.generate_content(
         prompt,
         generation_config=genai.GenerationConfig(
-            thinking_config={"thinking_budget": 0},
+            response_mime_type="application/json",
         ),
     )
 

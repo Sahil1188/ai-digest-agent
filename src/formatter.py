@@ -56,7 +56,7 @@ def _shell(content: str, label: str) -> str:
   </div>
   {content}
   <p style="text-align:center;font-size:12px;color:#9ca3af;margin-top:24px;">
-    Built with Python · Gemini 2.5 Flash · Runs free on GitHub Actions
+    Built with Python · Gemini 2.0 Flash · Runs free on GitHub Actions
   </p>
 </div>
 </body>

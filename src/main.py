@@ -1,6 +1,17 @@
 """
-Entry point for the AI Digest system.
-Pipeline: fetch all sources → summarize with LLM → format HTML → send (or preview).
+Entry point for the AI Digest agent.
+
+This runs one cycle of the agent's perceive → reason → act loop:
+  1. PERCEIVE — fetch_all() pulls from 19+ sources and filters out
+     anything already seen in the last 7 days (data/seen_urls.json)
+  2. REASON   — summarize() hands the new items to Gemini 2.0 Flash
+     (Groq as fallback) to categorise, judge importance, and explain
+     what changed vs. previous approaches
+  3. ACT      — format_*() renders the LLM's structured output as HTML
+     and mailer.send_email() delivers it
+
+Triggered twice daily by GitHub Actions cron — fully autonomous, no
+human in the loop.
 
 Usage:
   python src/main.py --time morning

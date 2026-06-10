@@ -1,16 +1,54 @@
-# 🤖 AI Digest
+# 🤖 AI Digest Agent
 
-A Python automation system that fetches AI/ML news from 20+ sources, summarises it with Gemini 2.5 Flash, and delivers two beautifully formatted HTML emails daily — 7 AM and 7 PM (UAE/UTC+4). Runs completely free on GitHub Actions.
+An autonomous agent that monitors **19+ AI/ML sources**, reasons about what's actually important, and emails you a digest twice a day — with zero human in the loop and zero infrastructure cost.
 
-## What It Does
+Every morning and evening it runs its **perceive → reason → act** loop:
 
-- **Fetches** from 14 RSS feeds, 4 scraped pages, 5 Reddit communities, and 7 Twitter accounts
-- **Deduplicates** against a local JSON file so you never see the same story twice
-- **Summarises** using Gemini 2.5 Flash (free tier) with Groq Llama 3.3 70B as fallback
-- **Formats** responsive HTML emails with inline CSS (Gmail-safe)
-- **Delivers** via Gmail SMTP twice a day, automated through GitHub Actions cron
+1. **Perceive** — pulls fresh content from RSS feeds, scraped blogs, Reddit, and Twitter/X, then filters out anything already covered in the last 7 days
+2. **Reason** — hands the new items to Gemini 2.0 Flash (Groq Llama 3.3 70B as fallback), which categorises each item, judges what's actually important, assigns community sentiment, and explains *how each new model/tool/technique improves on what came before*
+3. **Act** — renders the LLM's structured output as an HTML email and delivers it via Gmail
 
-## Sources
+It runs on a GitHub Actions cron schedule — no server, no database, no paid APIs.
+
+## System Design
+
+```mermaid
+flowchart TD
+    CRON["GitHub Actions Cron<br/>3 AM &amp; 3 PM UTC<br/>(7 AM / 7 PM UAE)"] --> FETCH
+
+    subgraph FETCH["1 · PERCEIVE — fetcher.py"]
+        direction LR
+        RSS["14 RSS Feeds<br/>(ArXiv, HF, DeepMind...)"]
+        SCRAPE["4 Scraped Pages<br/>(OpenAI, Anthropic...)"]
+        REDDIT["Reddit RSS<br/>(5 subreddits)"]
+        NITTER["Nitter RSS<br/>(7 X/Twitter accounts)"]
+    end
+
+    FETCH --> DEDUP{"Dedup vs<br/>seen_urls.json<br/>(7-day expiry)"}
+    DEDUP -->|new items only| REASON
+
+    subgraph REASON["2 · REASON — summarizer.py"]
+        direction LR
+        GEMINI["Gemini 2.0 Flash<br/>(primary)"]
+        GROQ["Groq Llama 3.3 70B<br/>(fallback)"]
+        GEMINI -.on failure.-> GROQ
+    end
+
+    REASON --> JSON["Structured digest JSON<br/>(top stories, models, tools,<br/>community sentiment, papers...)"]
+
+    JSON --> ACT
+
+    subgraph ACT["3 · ACT"]
+        direction LR
+        FORMAT["formatter.py<br/>HTML + inline CSS"]
+        MAIL["mailer.py<br/>Gmail SMTP :465"]
+        FORMAT --> MAIL
+    end
+
+    ACT --> INBOX["📬 Recipient inbox"]
+```
+
+## What It Covers
 
 | Category | Sources |
 |----------|---------|
@@ -18,43 +56,45 @@ A Python automation system that fetches AI/ML news from 20+ sources, summarises 
 | **Industry blogs** | HuggingFace Blog · Google DeepMind · The Batch · Sebastian Raschka |
 | **Developer** | Towards Data Science · Hacker News AI · dev.to AI/ML · Hashnode AI |
 | **Scraped pages** | OpenAI Blog · Anthropic News · arxiv-sanity · GitHub Trending Python |
-| **Reddit** | r/MachineLearning · r/LocalLLaMA · r/artificial · r/OpenAI · r/singularity |
-| **Twitter** | @karpathy · @ylecun · @AnthropicAI · @OpenAI · @GoogleDeepMind · @huggingface · @sama |
+| **Reddit** (RSS, no API key) | r/MachineLearning · r/LocalLLaMA · r/artificial · r/OpenAI · r/singularity |
+| **Twitter/X** (via Nitter RSS) | @karpathy · @ylecun · @AnthropicAI · @OpenAI · @GoogleDeepMind · @huggingface · @sama |
 
 ## Tech Stack
 
 | Tool | Purpose |
 |------|---------|
 | Python 3.11 | Core language |
-| feedparser | RSS/Atom feed parsing |
-| requests + BeautifulSoup4 + lxml | Web scraping |
-| PRAW | Reddit API (official, read-only) |
-| google-generativeai | Gemini 2.5 Flash API |
+| feedparser | RSS/Atom feed parsing (RSS, Reddit, Nitter) |
+| requests + BeautifulSoup4 + lxml | Web scraping & HTML cleanup |
+| google-generativeai | Gemini 2.0 Flash — the agent's reasoning engine |
 | openai SDK | Groq fallback (OpenAI-compatible endpoint) |
 | python-dotenv | Environment variable management |
 | smtplib (stdlib) | Gmail SMTP delivery |
-| GitHub Actions | Free cron scheduling |
-| JSON file | Deduplication (no database) |
+| GitHub Actions | Free cron scheduling + cache-based state persistence |
+| JSON file | Lightweight memory for deduplication (no database) |
 
 ## Project Structure
 
 ```
 ai-digest/
 ├── src/
-│   ├── main.py            # Entry point — orchestrates the full pipeline
-│   ├── fetcher.py         # Orchestrates all 20+ sources + deduplication
-│   ├── reddit_fetcher.py  # Reddit PRAW logic (5 subreddits)
-│   ├── nitter_fetcher.py  # Twitter via Nitter RSS (7 accounts, 3 instances)
-│   ├── summarizer.py      # Gemini 2.5 Flash + Groq fallback
-│   ├── formatter.py       # HTML email builder (morning 7 sections / evening 4)
-│   └── mailer.py          # Gmail SMTP sender
+│   ├── main.py            # Agent entry point — runs the perceive/reason/act loop
+│   ├── fetcher.py          # PERCEIVE: orchestrates 19+ sources + 7-day dedup
+│   ├── reddit_fetcher.py    # Reddit via public RSS (5 subreddits)
+│   ├── nitter_fetcher.py    # Twitter/X via Nitter RSS (7 accounts, 3 mirror instances)
+│   ├── summarizer.py        # REASON: Gemini 2.0 Flash + Groq fallback
+│   ├── formatter.py         # ACT: HTML email builder (morning 7 sections / evening 4)
+│   └── mailer.py            # ACT: Gmail SMTP sender
+├── tests/
+│   ├── test_formatter.py    # HTML rendering tests
+│   └── test_fetcher_dedup.py # Deduplication + expiry tests
 ├── data/
-│   └── seen_urls.json     # Deduplication state (gitignored)
+│   └── seen_urls.json       # Agent's memory — gitignored, persisted via Actions cache
 ├── .github/workflows/
-│   └── digest.yml         # Cron: 3 AM UTC + 3 PM UTC daily
-├── .env.example           # Template for all 8 required env vars
+│   └── digest.yml           # Cron: 3 AM UTC + 3 PM UTC daily
+├── .env.example              # Template for required env vars
 ├── requirements.txt
-└── CLAUDE.md              # Project specification
+└── LICENSE
 ```
 
 ## Setup
@@ -88,23 +128,11 @@ cp .env.example .env
 
 #### Get Gmail App Password
 1. Enable 2-Step Verification on your Google account
-2. Go to [myaccount.google.com/security](https://myaccount.google.com/security) → 2-Step Verification → App passwords
-3. App: **Mail**, Device: **Other** → name it "AI Digest"
+2. Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+3. App name: "AI Digest" → Create
 4. Copy the 16-character password into `.env` as `GMAIL_APP_PASSWORD`
 
-#### Get Reddit API credentials (optional)
-Reddit is optional — the digest runs without it.
-
-1. Go to [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
-2. Scroll down → **create another app...**
-3. Fill in:
-   - **Name:** AI Digest Bot
-   - **Type:** `script`
-   - **Redirect URI:** `http://localhost:8080`
-4. Click **create app**
-5. `REDDIT_CLIENT_ID` = the short string under "personal use script" (below the app name)
-6. `REDDIT_CLIENT_SECRET` = the "secret" field
-7. `REDDIT_USER_AGENT` = `python:ai-digest-bot:v1.0 (by u/YOUR_USERNAME)`
+> **Reddit & Twitter/X need no API keys** — both are fetched via public RSS (old.reddit.com and Nitter mirrors).
 
 ### 3. Test locally
 
@@ -112,22 +140,24 @@ Reddit is optional — the digest runs without it.
 # Dry run — generates HTML preview, no email sent
 python src/main.py --time morning --dry-run
 
-# Open the preview in your browser
-# Windows:
-start "" "C:\Users\YourName\AppData\Local\Temp\digest_preview_morning.html"
-# macOS/Linux:
-open /tmp/digest_preview_morning.html
+# Open the preview printed in the console output
 
 # Live run — sends actual email
 python src/main.py --time morning
 python src/main.py --time evening
 ```
 
-### 4. Deploy to GitHub Actions
+### 4. Run the tests
+
+```bash
+python -m unittest discover tests
+```
+
+### 5. Deploy to GitHub Actions
 
 1. Push the repository to GitHub
 2. Go to your repo → **Settings** → **Secrets and variables** → **Actions**
-3. Add these 8 repository secrets (one by one, click **New repository secret**):
+3. Add these 5 repository secrets:
 
 | Secret name | Value |
 |-------------|-------|
@@ -136,13 +166,10 @@ python src/main.py --time evening
 | `GMAIL_ADDRESS` | Your Gmail address |
 | `GMAIL_APP_PASSWORD` | Your 16-char Gmail App Password |
 | `RECIPIENT_EMAIL` | Who receives the digest |
-| `REDDIT_CLIENT_ID` | Reddit app client ID |
-| `REDDIT_CLIENT_SECRET` | Reddit app secret |
-| `REDDIT_USER_AGENT` | e.g. `python:ai-digest-bot:v1.0 (by u/yourname)` |
 
 4. Go to **Actions** → **AI Digest** → **Run workflow** to test manually
 
-The workflow runs automatically at 3 AM UTC (7 AM UAE) and 3 PM UTC (7 PM UAE) every day.
+The agent runs automatically at 3 AM UTC (7 AM UAE) and 3 PM UTC (7 PM UAE) every day. Its memory (`seen_urls.json`) persists between runs via `actions/cache`.
 
 ## Email Sections
 
@@ -155,13 +182,14 @@ The workflow runs automatically at 3 AM UTC (7 AM UAE) and 3 PM UTC (7 PM UAE) e
 
 ## Skills Demonstrated
 
-- **Python automation** — orchestrating multiple data sources with clean error handling
-- **API integration** — Gemini, Groq, Reddit PRAW, Nitter RSS, Gmail SMTP
-- **Web scraping** — BeautifulSoup + lxml for blog page extraction
-- **Prompt engineering** — structured JSON output from an LLM, with fallback chain
-- **Email deliverability** — inline CSS HTML emails compatible with Gmail
-- **DevOps** — GitHub Actions cron jobs with secrets management
-- **Data persistence** — lightweight deduplication without a database
+- **Agentic system design** — autonomous perceive/reason/act loop with persistent memory and no human in the loop
+- **LLM integration & prompt engineering** — structured JSON extraction from Gemini, with a Groq fallback chain and a model choice tuned to avoid extended-thinking latency
+- **Multi-source data aggregation** — RSS, web scraping, and platform-specific RSS workarounds (Reddit, Nitter) unified into one pipeline
+- **Resilient error handling** — every external call is isolated; one failing source never breaks the run
+- **Stateful automation without a database** — JSON-based memory with time-based expiry (7-day dedup window)
+- **Email deliverability** — inline-CSS HTML emails compatible with Gmail's CSS stripping
+- **DevOps / CI automation** — GitHub Actions cron jobs, secrets management, and cache-based state persistence
+- **Testing** — unit tests for HTML rendering and deduplication logic
 
 ---
 
