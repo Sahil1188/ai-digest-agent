@@ -102,7 +102,7 @@ ai-digest/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/yourusername/ai-digest.git
+git clone https://github.com/sahil1188/ai-digest.git
 cd ai-digest
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
@@ -193,4 +193,4 @@ The agent runs automatically at 3 AM UTC (7 AM UAE) and 3 PM UTC (7 PM UAE) ever
 
 ---
 
-Built by [Sahil](https://github.com/yourusername) · UAE · Backend engineer (NestJS, Python)
+Built by [Sahil](https://github.com/sahil1188) · UAE · Backend engineer (NestJS, Python)
