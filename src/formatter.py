@@ -51,7 +51,7 @@ def _shell(content: str, label: str) -> str:
 <body style="margin:0;padding:0;background:#f9fafb;">
 <div style="{_WRAP}">
   <div style="text-align:center;padding:16px 0 20px;">
-    <h1 style="font-size:24px;font-weight:800;color:#111827;margin:0;">🤖 AI Digest</h1>
+    <h1 style="font-size:24px;font-weight:800;color:#111827;margin:0;">AI Digest</h1>
     <p style="color:#6b7280;font-size:14px;margin:4px 0 0;">{label} Edition &nbsp;·&nbsp; {date}</p>
   </div>
   {content}
@@ -74,24 +74,24 @@ def _banner(text: str) -> str:
 
 def _render_top_stories(stories: list[dict]) -> str:
     if not stories:
-        return _card("🔥 Top Stories", _empty())
+        return _card("Top Stories", _empty())
     rows = ""
     for s in stories:
         rows += (
             f'<div style="{_ROW}">'
             f'  <a href="{s.get("url","#")}" style="{_LINK}">{s.get("title","")}</a>'
-            f'  <p style="{_META}">📍 {s.get("source","")}</p>'
+            f'  <p style="{_META}">{s.get("source","")}</p>'
             + (f'  <p style="{_BODY}"><strong>What:</strong> {s["what_it_is"]}</p>' if s.get("what_it_is") else "")
             + (f'  <p style="{_BODY}"><strong>Why it matters:</strong> {s["why_it_matters"]}</p>' if s.get("why_it_matters") else "")
-            + (f'  <p style="{_BODY}">📈 <em>{s["what_changed"]}</em></p>' if s.get("what_changed") else "")
+            + (f'  <p style="{_BODY}"><strong>What changed:</strong> {s["what_changed"]}</p>' if s.get("what_changed") else "")
             + "</div>"
         )
-    return _card("🔥 Top Stories", rows)
+    return _card("Top Stories", rows)
 
 
 def _render_new_models(models: list[dict]) -> str:
     if not models:
-        return _card("🧠 New Models & Embeddings", _empty("No new model releases today."))
+        return _card("New Models & Embeddings", _empty("No new model releases today."))
     rows = ""
     for m in models:
         badge = (f'<span style="background:#f0fdf4;color:#16a34a;border-radius:4px;'
@@ -100,15 +100,15 @@ def _render_new_models(models: list[dict]) -> str:
             f'<div style="{_ROW}">'
             f'  <a href="{m.get("url","#")}" style="{_LINK}">{m.get("name","")}</a>{badge}'
             + (f'  <p style="{_BODY}">{m["what_it_is"]}</p>' if m.get("what_it_is") else "")
-            + (f'  <p style="{_BODY}">⬆️ <strong>Improvement:</strong> {m["improvement_over_previous"]}</p>' if m.get("improvement_over_previous") else "")
+            + (f'  <p style="{_BODY}"><strong>Improvement:</strong> {m["improvement_over_previous"]}</p>' if m.get("improvement_over_previous") else "")
             + "</div>"
         )
-    return _card("🧠 New Models & Embeddings", rows)
+    return _card("New Models & Embeddings", rows)
 
 
 def _render_tools(tools: list[dict]) -> str:
     if not tools:
-        return _card("📦 New Tools & Frameworks", _empty("No new tools today."))
+        return _card("New Tools & Frameworks", _empty("No new tools today."))
     rows = ""
     for t in tools:
         badge = (f'<span style="background:#eff6ff;color:#1d4ed8;border-radius:4px;'
@@ -117,15 +117,15 @@ def _render_tools(tools: list[dict]) -> str:
             f'<div style="{_ROW}">'
             f'  <a href="{t.get("url","#")}" style="{_LINK}">{t.get("name","")}</a>{badge}'
             + (f'  <p style="{_BODY}">{t["what_it_does"]}</p>' if t.get("what_it_does") else "")
-            + (f'  <p style="{_BODY}">💡 <strong>Why better:</strong> {t["why_better_than_alternatives"]}</p>' if t.get("why_better_than_alternatives") else "")
+            + (f'  <p style="{_BODY}"><strong>Why better:</strong> {t["why_better_than_alternatives"]}</p>' if t.get("why_better_than_alternatives") else "")
             + "</div>"
         )
-    return _card("📦 New Tools & Frameworks", rows)
+    return _card("New Tools & Frameworks", rows)
 
 
 def _render_community(discussions: list[dict]) -> str:
     if not discussions:
-        return _card("💬 Community Pulse", _empty("No discussions today."))
+        return _card("Community Pulse", _empty("No discussions today."))
     rows = ""
     for d in discussions:
         sentiment = d.get("sentiment", "mixed")
@@ -138,48 +138,48 @@ def _render_community(discussions: list[dict]) -> str:
             f'  <div>'
             f'    <a href="{d.get("url","#")}" style="{_LINK}">{d.get("topic","")}</a>{badge}'
             f'  </div>'
-            f'  <p style="{_META}">📍 {d.get("source","")}</p>'
+            f'  <p style="{_META}">{d.get("source","")}</p>'
             + (f'  <p style="{_BODY}">{d["key_points"]}</p>' if d.get("key_points") else "")
             + "</div>"
         )
-    return _card("💬 Community Pulse", rows)
+    return _card("Community Pulse", rows)
 
 
 def _render_papers(papers: list[dict]) -> str:
     if not papers:
-        return _card("📄 Research Papers", _empty("No new papers today."))
+        return _card("Research Papers", _empty("No new papers today."))
     rows = ""
     for p in papers:
         rows += (
             f'<div style="{_ROW}">'
             f'  <a href="{p.get("url","#")}" style="{_LINK}">{p.get("title","")}</a>'
             + (f'  <p style="{_BODY}">{p["plain_english"]}</p>' if p.get("plain_english") else "")
-            + (f'  <p style="{_BODY}">🔬 <strong>Key contribution:</strong> {p["key_contribution"]}</p>' if p.get("key_contribution") else "")
+            + (f'  <p style="{_BODY}"><strong>Key contribution:</strong> {p["key_contribution"]}</p>' if p.get("key_contribution") else "")
             + "</div>"
         )
-    return _card("📄 Research Papers (Plain English)", rows)
+    return _card("Research Papers (Plain English)", rows)
 
 
 def _render_techniques(techniques: list[dict]) -> str:
     if not techniques:
-        return _card("💡 Techniques & Approaches", _empty("No new techniques today."))
+        return _card("Techniques & Approaches", _empty("No new techniques today."))
     rows = ""
     for t in techniques:
         rows += (
             f'<div style="{_ROW}">'
             f'  <a href="{t.get("url","#")}" style="{_LINK}">{t.get("name","")}</a>'
             + (f'  <p style="{_BODY}">{t["what_it_does"]}</p>' if t.get("what_it_does") else "")
-            + (f'  <p style="{_BODY}">⬆️ <strong>Improvement:</strong> {t["improvement_over_before"]}</p>' if t.get("improvement_over_before") else "")
+            + (f'  <p style="{_BODY}"><strong>Improvement:</strong> {t["improvement_over_before"]}</p>' if t.get("improvement_over_before") else "")
             + "</div>"
         )
-    return _card("💡 Techniques & Approaches", rows)
+    return _card("Techniques & Approaches", rows)
 
 
 def _render_topics(topics: list[str]) -> str:
     if not topics:
-        return _card("🏷️ Trending Topics", _empty("No trending topics today."))
+        return _card("Trending Topics", _empty("No trending topics today."))
     tags = "".join(f'<span style="{_TAG}">{t}</span>' for t in topics)
-    return _card("🏷️ Trending Topics", f'<div style="margin-top:4px;">{tags}</div>')
+    return _card("Trending Topics", f'<div style="margin-top:4px;">{tags}</div>')
 
 
 # ── Public API ──────────────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ def format_morning(digest: dict) -> str:
     sections += _render_techniques(digest.get("techniques_approaches", []))
     sections += _render_topics(digest.get("trending_topics", []))
 
-    return _shell(sections, "☀️ Morning")
+    return _shell(sections, "Morning")
 
 
 def format_evening(digest: dict) -> str:
@@ -219,13 +219,13 @@ def format_evening(digest: dict) -> str:
             rows += (
                 f'<div style="{_ROW}">'
                 f'  <a href="{s.get("url","#")}" style="{_LINK}">{s.get("title","")}</a>'
-                f'  <p style="{_META}">📍 {s.get("source","")}</p>'
+                f'  <p style="{_META}">{s.get("source","")}</p>'
                 + (f'  <p style="{_BODY}">{s["what_changed"]}</p>' if s.get("what_changed") else "")
                 + "</div>"
             )
-        sections += _card("🆕 New Since Morning", rows)
+        sections += _card("New Since Morning", rows)
     else:
-        sections += _card("🆕 New Since Morning", _empty("Nothing new since the morning digest."))
+        sections += _card("New Since Morning", _empty("Nothing new since the morning digest."))
 
     # Section 2 — Community Pulse Evening Update
     sections += _render_community(digest.get("community_discussions", []))
@@ -246,6 +246,6 @@ def format_evening(digest: dict) -> str:
                 + (f'  <p style="{_BODY}">{body}</p>' if body else "")
                 + "</div>"
             )
-        sections += _card("🔮 What to Watch Tomorrow", rows)
+        sections += _card("What to Watch Tomorrow", rows)
 
-    return _shell(sections, "🌙 Evening")
+    return _shell(sections, "Evening")

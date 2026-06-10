@@ -1,4 +1,4 @@
-# 🤖 AI Digest Agent
+# AI Digest Agent
 
 An autonomous agent that monitors **19+ AI/ML sources**, reasons about what's actually important, and emails you a digest twice a day — with zero human in the loop and zero infrastructure cost.
 
@@ -45,7 +45,7 @@ flowchart TD
         FORMAT --> MAIL
     end
 
-    ACT --> INBOX["📬 Recipient inbox"]
+    ACT --> INBOX["Recipient inbox"]
 ```
 
 ## What It Covers
@@ -174,11 +174,11 @@ The agent runs automatically at 3 AM UTC (7 AM UAE) and 3 PM UTC (7 PM UAE) ever
 ## Email Sections
 
 **Morning (7 sections):**
-🔥 Top Stories · 🧠 New Models & Embeddings · 📦 New Tools & Frameworks ·
-💬 Community Pulse · 📄 Research Papers · 💡 Techniques & Approaches · 🏷️ Trending Topics
+Top Stories · New Models & Embeddings · New Tools & Frameworks ·
+Community Pulse · Research Papers · Techniques & Approaches · Trending Topics
 
 **Evening (4 sections):**
-🆕 New Since Morning · 💬 Community Pulse Evening Update · 📈 Trending Today · 🔮 What to Watch Tomorrow
+New Since Morning · Community Pulse Evening Update · Trending Today · What to Watch Tomorrow
 
 ## Skills Demonstrated
 

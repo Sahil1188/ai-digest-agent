@@ -63,10 +63,10 @@ def send_email(subject: str, html_body: str) -> bool:
 
 def build_subject(digest_time: str) -> str:
     """
-    Build a descriptive subject line with emoji, edition label, and date.
-    Example: '☀️ AI Digest — Morning Edition — Jun 09'
+    Build a descriptive subject line with edition label and date.
+    Example: 'AI Digest — Morning Edition — Jun 09'
     """
     date_str = datetime.utcnow().strftime("%b %d")
     if digest_time == "morning":
-        return f"☀️ AI Digest — Morning Edition — {date_str}"
-    return f"🌙 AI Digest — Evening Edition — {date_str}"
+        return f"AI Digest — Morning Edition — {date_str}"
+    return f"AI Digest — Evening Edition — {date_str}"
